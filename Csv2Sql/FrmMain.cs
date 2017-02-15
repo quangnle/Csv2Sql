@@ -10,65 +10,45 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace Csv2Sql
+namespace Sql2Csv
 {
     public partial class FrmMain : Form
     {
-        private SqlConnection _con = null;
-        private string _configFile = "config.dat";
-        private string _fileName = "";
-        private string _conStrTemplate = "Data Source={0};Initial Catalog={1};User Id={2}; Password = {3};";
-        private string _cmdInsertTemplate = "BULK INSERT {0} FROM '{1}' WITH" + Environment.NewLine +
-                                      "(" + Environment.NewLine +
-                                      "FIRSTROW = {2}," + Environment.NewLine +
-                                      "FIELDTERMINATOR = '{3}'," + Environment.NewLine +
-                                      "ROWTERMINATOR = '\\n'," + Environment.NewLine +
-                                      "TABLOCK" + Environment.NewLine +
-                                      ");" + Environment.NewLine;
 
-        private string _cmdDeleteTemplate = "TRUNCATE TABLE {0};" + Environment.NewLine;
+        private SqlConnection _con = null;
+        private string configFile = "config.dat";
 
         public FrmMain()
         {
             InitializeComponent();
-
-            cboDelimiter.SelectedIndex = 0;
-            groupBox3.Enabled = false;
-
-            var path = Directory.GetCurrentDirectory() + @"\" + _configFile;
+            var path = Directory.GetCurrentDirectory() + @"\" + configFile;
             if (File.Exists(path))
             {
-                var cfg = File.ReadAllLines(_configFile);
+                var cfg = File.ReadAllLines(configFile);
                 txtServer.Text = cfg[0];
                 txtDb.Text = cfg[1];
                 txtUser.Text = cfg[2];
-                txtPassword.Text = cfg[3];
+                txtPwd.Text = cfg[3];
             }
+
         }
 
         private void btnConnect_Click(object sender, EventArgs e)
-        {
+        {   
             _con = new SqlConnection();
-            _con.ConnectionString = string.Format(_conStrTemplate, txtServer.Text, txtDb.Text, txtUser.Text, txtPassword.Text);
+            var conStr = "Data Source={0};Initial Catalog={1};User Id={2}; Password = {3};";
+            _con.ConnectionString = string.Format(conStr, txtServer.Text, txtDb.Text, txtUser.Text, txtPwd.Text);
 
             try
             {
                 _con.Open();
                 MessageBox.Show("Connection is successfully established.");
 
-                var lst = _con.GetSchema("Tables");
-                for (int i = 0; i < lst.Rows.Count; i++)
-                {
-                    cboTable.Items.Add(lst.Rows[i]["TABLE_NAME"]);
-                }
-
-                cboTable.SelectedIndex = 0;
-                groupBox3.Enabled = true;
-
+                txtQuery.Enabled = true;
+                btnExecute.Enabled = true;
             }
             catch (Exception)
             {
-                groupBox3.Enabled = false;
                 MessageBox.Show("Cannot establish connection to server.");
             }
             finally
@@ -79,76 +59,57 @@ namespace Csv2Sql
 
         private void btnExecute_Click(object sender, EventArgs e)
         {
-            SqlTransaction tx = null;
             try
             {
-                _con.Open();
-                tx = _con.BeginTransaction();
-                var cmd = new SqlCommand(txtCommand.Text);
+                SqlCommand cmd = new SqlCommand(txtQuery.Text);
                 cmd.Connection = _con;
-                cmd.Transaction = tx;
-                cmd.ExecuteNonQuery();
-                tx.Commit();
-                
+
+                _con.Open();
+
+                var reader = cmd.ExecuteReader();
+
+                DataTable dt = new DataTable();
+                dt.Load(reader);
+
+                grdData.DataSource = dt;
+                grdData.Refresh();
+
+                lblNRow.Text = "Row Count = " + dt.Rows.Count.ToString();
+
+                _con.Close();
             }
-            catch(Exception ex)
+            catch (Exception)
             {
-                tx.Rollback();
-                MessageBox.Show("Terminated due to error while performing bulk insert. Please check the error log.");
-                txtOutput.Text = ex.ToString();
+                throw;
             }
             finally
             {
                 _con.Close();
             }
+            
         }
 
-        private void btnLoadCsv_Click(object sender, EventArgs e)
+        private void btnExportToCSV_Click(object sender, EventArgs e)
         {
-            var dlgOpenFile = new OpenFileDialog();
-            DialogResult result = dlgOpenFile.ShowDialog();
-
-            var delimiters = new char[]{ ',', '\t', ' '};
-
+            DialogResult result = dlgSaveFile.ShowDialog();
             if (result == DialogResult.OK)
             {
-                _fileName = dlgOpenFile.FileName;
-                var delimiter = delimiters[Math.Max(0, cboDelimiter.SelectedIndex)];
-                var hasHeaders = chkHasHeaders.Checked;
+                var fileName = dlgSaveFile.FileName;
+                var dt = grdData.DataSource as DataTable;
+                StringBuilder sb = new StringBuilder();
 
-                CSVLoader loader = new CSVLoader();
-                var dt = loader.Load(_fileName, hasHeaders, delimiter);
+                IEnumerable<string> columnNames = dt.Columns.Cast<DataColumn>().
+                                                  Select(column => column.ColumnName);
+                sb.AppendLine(string.Join(",", columnNames));
 
-                lblNRecords.Text = String.Format("{0:0,0}", dt.Rows.Count) + " records loaded";
+                foreach (DataRow row in dt.Rows)
+                {
+                    IEnumerable<string> fields = row.ItemArray.Select(field => field.ToString());
+                    sb.AppendLine(string.Join(",", fields));
+                }
 
-                grdData.DataSource = dt;
-                grdData.Refresh();
+                File.WriteAllText(fileName, sb.ToString());
             }
-        }
-
-        private void cboTable_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if (!string.IsNullOrEmpty(_fileName))
-            {
-                var tableName = cboTable.SelectedItem;
-                var delimiters = new char[] { ',', '\t', ' ' };
-                var delimiter = delimiters[Math.Max(0, cboDelimiter.SelectedIndex)];
-                var firstRow = chkHasHeaders.Checked ? 1 : 0;
-
-                txtCommand.Text = string.Format(_cmdInsertTemplate, tableName, _fileName, firstRow, delimiter);
-
-                if (chkClean.Checked)
-                    txtCommand.Text = string.Format(_cmdDeleteTemplate, tableName) + Environment.NewLine  + txtCommand.Text;
-            }
-            else
-            {
-                MessageBox.Show("You must load input file first, please back to step 1.");
-            }
-        }
-
-        private void FrmMain_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            if (_con != null) _con.Dispose();
         }
     }
 }
