@@ -35,6 +35,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Windows.Forms.DataVisualization" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -46,17 +47,53 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CmdBuilder.cs" />
+    <Compile Include="CmdCreateTblGenerator.cs" />
+    <Compile Include="CmdDropTblGenerator.cs" />
+    <Compile Include="CmdFormatDateGenerator.cs" />
+    <Compile Include="CmdGenerator.cs" />
+    <Compile Include="CmdInsertGenerator.cs" />
+    <Compile Include="CmdTruncateTbl.cs" />
     <Compile Include="CSVLoader.cs" />
+    <Compile Include="DbField.cs" />
+    <Compile Include="FieldItem.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="FieldItem.Designer.cs">
+      <DependentUpon>FieldItem.cs</DependentUpon>
+    </Compile>
+    <Compile Include="FrmExecutor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FrmExecutor.Designer.cs">
+      <DependentUpon>FrmExecutor.cs</DependentUpon>
+    </Compile>
     <Compile Include="FrmMain.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="FrmMain.Designer.cs">
       <DependentUpon>FrmMain.cs</DependentUpon>
     </Compile>
+    <Compile Include="FrmTblBuilder.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FrmTblBuilder.Designer.cs">
+      <DependentUpon>FrmTblBuilder.cs</DependentUpon>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TableBuilderCloseDelegate.cs" />
+    <EmbeddedResource Include="FieldItem.resx">
+      <DependentUpon>FieldItem.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FrmExecutor.resx">
+      <DependentUpon>FrmExecutor.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="FrmMain.resx">
       <DependentUpon>FrmMain.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FrmTblBuilder.resx">
+      <DependentUpon>FrmTblBuilder.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
